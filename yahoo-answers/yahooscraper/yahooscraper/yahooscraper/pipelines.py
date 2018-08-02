@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from pydblite import Base
 from scrapy.xlib.pydispatch import dispatcher
 from scrapy import signals

@@ -1,3 +1,4 @@
+#-*- coding: UTF-8 -*-
 import re
 import time
 import html2text
@@ -18,12 +19,13 @@ class MySpider(scrapy.Spider):
     uid = 0
     url_to_scrape = []
     name = "YahooUrlSearcher"
-    allowed_domains = ["yahoo.com"]
+    allowed_domains = ["hk.yahoo.com"]
     # First URL for the scrapy request
     # In this case Programming and Design category of Yahoo Answer
-    start_urls = ["https://answers.yahoo.com/dir/index/discover?sid=396545663"]
+    start_urls = [
+        "https://hk.answers.yahoo.com/dir/index/discover"]
     # Domain
-    BASE_URL = 'https://answers.yahoo.com/question'
+    BASE_URL = 'https://hk.answers.yahoo.com/question'
 
     def __init__(self):
         # Select the webdriver in order to use web automation with Selenium
@@ -51,14 +53,17 @@ class MySpider(scrapy.Spider):
         # For any user in the top answerers chart start the scrape of question URLs
         for single_user in lnks:
             # Load user profile page
-            print ("Take URLs from user: "+str(single_user))
+            print ("Take URLs from user: " + str(single_user))
             self.driver.get(single_user)
+
             time.sleep(5)
             # Click on the Answers tab of the user's profile
             try:
                 self.driver.find_element_by_xpath(
                     '//div[contains(@id,"ya-tabs-main")]/div[2]/a').click()
+
             except NoSuchElementException:
+
                 pass
 
             # Set max time in order to wait the loading label
@@ -66,7 +71,9 @@ class MySpider(scrapy.Spider):
             try:
                 new_position_in_page = self.driver.find_element_by_id(
                     "ya-infinite-scroll-message").location
+
             except NoSuchElementException:
+
                 pass
             # Loop in order to do the scroll of the page untill loading label is show
             while True:
@@ -76,6 +83,7 @@ class MySpider(scrapy.Spider):
                 try:
                     old_position = self.driver.find_element_by_id(
                         "ya-infinite-scroll-message").location
+
                     for i in range(0, 80):
                         # Javascript comand to scrolldown the page
                         self.driver.execute_script(
@@ -87,8 +95,8 @@ class MySpider(scrapy.Spider):
                     if old_position == new_position_in_page:
                         break
 
-
                 except NoSuchElementException:
+                    print('No Such Element 1')
                     pass
 
                 try:
@@ -96,6 +104,7 @@ class MySpider(scrapy.Spider):
                     if self.driver.find_element_by_id("ya-stream-error"):
                         break
                 except NoSuchElementException:
+                    print('No Such Element 2')
                     pass
                 try:
                     # Wait the loading of the loading label
@@ -126,16 +135,22 @@ class MySpider(scrapy.Spider):
                     url_accodare = url.get_attribute('href')
                     try:
                         # Check if the Question is related to programming & Design
-                        if (post.find_element_by_link_text(
-                                'Programming & Design')):
+                        # if (post.find_element_by_link_text('程式編寫及設計')):
+                        if (True):
                             item = YahoourlsearcherItem()
                             # Print date and url
                             # print("User url: " + str(i))
                             item['url'] = str(url_accodare)
-                            item['date'] = str(match.group(1)).strip()
+
+                            if match is None:
+                                item['date'] = 'not available'
+                            else:
+                                item['date'] = str(match.group(1)).strip()
+
                             yield item
                             i = i + 1
                     except NoSuchElementException:
+                        print('No Such Element 3')
                         pass
                 print("Link take by this user: " + str(i))
             except NoSuchElementException:
@@ -143,7 +158,6 @@ class MySpider(scrapy.Spider):
                 pass
 
         time.sleep(5)
-
 
         # Taking more elements from category main page
         # Start the scrolling of the main category
@@ -185,11 +199,15 @@ class MySpider(scrapy.Spider):
             print (url_accodare)
             item = YahoourlsearcherItem()
             item['url'] = str(url_accodare)
-            item['date'] = str(match.group(1)).strip()
+
+            if match is None:
+                item['date'] = 'not available'
+            else:
+                item['date'] = str(match.group(1)).strip()
             yield item
             i = i + 1
 
-        print("Take "+str(i)+" urls from the mainpage")
+        print("Take " + str(i) + " urls from the mainpage")
         print("Start other URLs crawling from the current URLs scraped")
         print("...this will be take long time")
         time.sleep(1)
@@ -235,7 +253,7 @@ class MySpider(scrapy.Spider):
 
                             try:
                                 post_elems = self.driver.find_elements_by_xpath(
-                                    '//div[contains(@id,"ya-related-questions")]'+
+                                    '//div[contains(@id,"ya-related-questions")]' +
                                     '//div[contains(@class,"qstn-title Fz-13 Fw-b Wow-bw")]')
                                 for post in post_elems:
                                     url_other_question = post.find_element_by_xpath(
@@ -267,11 +285,12 @@ class MySpider(scrapy.Spider):
             h.ignore_links = True
             category_text = h.handle(category[0])
             # Check if the question thread is related to programming and design
-            if "Programming" and "Design" in str(category_text).strip():
+            # if "程式編寫" and "設計" in str(category_text).strip():
+            if (True):
                 next_page = hxs.xpath(
                     '//a[contains(@class,"Clr-b") and text()=" Next "]/@href')\
                     .extract()
-                composed_string = "https://answers.yahoo.com" + next_page[0]
+                composed_string = "https://hk.answers.yahoo.com" + next_page[0]
                 item['url'] = str(response.url)
                 item['date'] = str("not available")
                 print ("*** " + str(category_text).strip() + " - " + item[

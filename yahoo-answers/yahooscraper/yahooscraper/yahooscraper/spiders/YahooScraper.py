@@ -1,3 +1,4 @@
+#-*- coding: UTF-8 -*-
 import datetime
 import html2text
 from scrapy.selector import HtmlXPathSelector
@@ -8,8 +9,14 @@ from ..items import YahooItem
 import sys
 import parsedatetime as pdt
 
+# sys.setdefaultencoding() does not exist, here!
+reload(sys)  # Reload does the trick!
+sys.setdefaultencoding('UTF8')
+
 # This class contains element related to question thread URL
 # and question date insertion
+
+
 class UrlDate():
     def __init__(self, url, date):
         self.url = url
@@ -22,10 +29,10 @@ class YahooScraper(scrapy.Spider):
     url_to_scrape = []
     # Name of this spider
     name = "yahoo"
-    allowed_domains = ["yahoo.com"]
-    start_urls = ["https://answers.yahoo.com/dir/index/discover?sid=396545663"]
-    BASE_URL = 'https://answers.yahoo.com/question'
-
+    allowed_domains = ["hk.answers.yahoo.com"]
+    start_urls = [
+        "https://hk.answers.yahoo.com/dir/index/discover"]
+    BASE_URL = 'https://hk.answers.yahoo.com/question'
 
     def __init__(self, database_name=None):
         print ("Opening " + database_name)
@@ -33,7 +40,7 @@ class YahooScraper(scrapy.Spider):
         # Choose the DB of the Question Thread URL
         db_r.create('url', 'date', mode="open")
         # Check if the DB is empty or new
-        if len(db_r)==0:
+        if len(db_r) == 0:
             print ("ERROR: Database not found or empty")
             sys.exit()
         else:
@@ -41,7 +48,8 @@ class YahooScraper(scrapy.Spider):
             for r in db_r:
                 self.url_to_scrape.append(UrlDate(r["url"], r["date"]))
             # Making a SET of the Database in order to delete duplicate URLS
-            self.url_to_scrape = {x.url: x for x in self.url_to_scrape}.values()
+            self.url_to_scrape = {
+                x.url: x for x in self.url_to_scrape}.values()
             print ("Database elements after set operation: " + str(len(db_r)))
 
     def parse(self, response):
@@ -58,7 +66,7 @@ class YahooScraper(scrapy.Spider):
         now = datetime.datetime.now()
         # Start to scraping a single question
 
-        #Checking question category
+        # Checking question category
         try:
             hxs = HtmlXPathSelector(response)
             category = hxs.xpath(
@@ -66,14 +74,15 @@ class YahooScraper(scrapy.Spider):
             h = html2text.HTML2Text()
             h.ignore_links = True
             category_text = h.handle(category[0])
-            url_category = str(category_text).strip()
+            url_category = str(category_text).encode('utf8').strip()
         except IndexError:
             print (str(self.uid) + "Warning: this Url is not more available...")
             url_category = "Error"
 
         # If the question is related to programming and design
         # start item creation process
-        if "Programming" and "Design" in url_category:
+        # if "程式編寫" and "設計" in url_category:
+        if (True):
             # increment id
             # copy id and use uid_copy in order to preserve from concurrent request
             self.uid = self.uid + 1
@@ -104,7 +113,7 @@ class YahooScraper(scrapy.Spider):
             text_to_gain = hxs.xpath('//h1').extract()
             # Take title of the question
             item['title'] = (
-            html2text.html2text(text_to_gain[0]).encode("utf8").strip())
+                html2text.html2text(text_to_gain[0]).encode("utf8").strip())
             # Take text from the question
             full_text_answer = hxs.xpath(
                 '//span[contains(@class,"ya-q-full-text Ol-n")]').extract()
@@ -119,7 +128,7 @@ class YahooScraper(scrapy.Spider):
                         'utf-8', 'ignore')
             # Take username of the questioner
             text_to_gain = hxs.xpath(
-                '//div[contains(@id,"yq-question-detail-profile-img")]'+
+                '//div[contains(@id,"yq-question-detail-profile-img")]' +
                 '/a/img/@alt').extract()
             if text_to_gain:
                 try:
@@ -134,18 +143,18 @@ class YahooScraper(scrapy.Spider):
             else:
                 item['author'] = "anonymous"
             text_to_gain = hxs.xpath(
-                '(//div[contains(@class,"Mend-10 Fz-13 Fw-n D-ib")])'+
+                '(//div[contains(@class,"Mend-10 Fz-13 Fw-n D-ib")])' +
                 '[2]/span[2]').extract()
             # Read number of answers
             if text_to_gain:
                 if " answers" in (
-                str(html2text.html2text(text_to_gain[0])).strip()):
+                        str(html2text.html2text(text_to_gain[0])).strip()):
                     item['answers'] = int(
                         str(html2text.html2text(text_to_gain[0])).replace(
                             " answers", "").strip())
                 else:
                     if " answer" in (
-                    str(html2text.html2text(text_to_gain[0])).strip()):
+                            str(html2text.html2text(text_to_gain[0])).strip()):
                         item['answers'] = int(
                             str(html2text.html2text(text_to_gain[0])).replace(
                                 " answer", "").strip())
@@ -168,7 +177,7 @@ class YahooScraper(scrapy.Spider):
                 ans_uid = 1
                 item = YahooItem()
                 ans_data = hxs.xpath(
-                    '(//div[contains(@class,"Pt-15")]/'+
+                    '(//div[contains(@class,"Pt-15")]/' +
                     'span[contains(@class, "Clr-88")])[1]').extract()
                 data_string = html2text.html2text(ans_data[0]).strip()
                 data_format = p.parseDT(str(
@@ -206,7 +215,6 @@ class YahooScraper(scrapy.Spider):
 
             else:
                 ans_uid = 1
-
 
             # Taking all the other answers
             all_answer = hxs.xpath('//ul[contains(@id,"ya-qn-answers")]/li')
@@ -262,12 +270,12 @@ class YahooScraper(scrapy.Spider):
             # in this case there are other answers in other page
             try:
                 if (hxs.xpath(
-                        '//div[contains(@id, "ya-qn-pagination")]'+
+                        '//div[contains(@id, "ya-qn-pagination")]' +
                         '/a[contains(@class,"Clr-bl")][last()]/@href')):
                     url_of_the_next_page = hxs.xpath(
-                        '//div[contains(@id, "ya-qn-pagination")]'+
+                        '//div[contains(@id, "ya-qn-pagination")]' +
                         '/a[contains(@class,"Clr-bl")][last()]/@href').extract()
-                    next_page_composed = "https://answers.yahoo.com" + \
+                    next_page_composed = "https://hk.answers.yahoo.com" + \
                                          url_of_the_next_page[0]
                     # Go to the next page and take more urls
                     # passing uid as parameter
@@ -341,12 +349,12 @@ class YahooScraper(scrapy.Spider):
 
         try:
             if (hxs.xpath(
-                    '//div[contains(@id, "ya-qn-pagination")]'+
+                    '//div[contains(@id, "ya-qn-pagination")]' +
                     '/a[contains(@class,"Clr-bl")][last()]/@href')):
                 url_of_the_next_page = hxs.xpath(
-                    '//div[contains(@id, "ya-qn-pagination")]'+
+                    '//div[contains(@id, "ya-qn-pagination")]' +
                     '/a[contains(@class,"Clr-bl")][last()]/@href').extract()
-                next_page_composed = "https://answers.yahoo.com" + \
+                next_page_composed = "https://hk.answers.yahoo.com" + \
                                      url_of_the_next_page[0]
                 request = scrapy.Request(next_page_composed,
                                          callback=self.parse_other_answer_page)
